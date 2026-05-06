@@ -1,1 +1,3 @@
 .dialec/*
+node_modules
+dist

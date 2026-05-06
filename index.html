@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HORSE SIMULATOR</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: 'Courier New', monospace;
+    }
+    #game-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    #ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    #ui-overlay > * {
+      pointer-events: auto;
+    }
+    #hud {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      display: none;
+    }
+    .stat-bar {
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+    }
+    .stat-label {
+      color: #fff;
+      font-size: 12px;
+      width: 70px;
+      text-shadow: 1px 1px 2px #000;
+    }
+    .stat-track {
+      width: 120px;
+      height: 12px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .stat-fill {
+      height: 100%;
+      transition: width 0.3s;
+      border-radius: 2px;
+    }
+    #health-fill { background: #e44; }
+    #hunger-fill { background: #4a4; }
+    #thirst-fill { background: #48f; }
+    #stamina-fill { background: #fa4; }
+    #age-label {
+      color: #fff;
+      font-size: 12px;
+      margin-top: 4px;
+      text-shadow: 1px 1px 2px #000;
+    }
+    #minimap-container {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      display: none;
+    }
+    #minimap {
+      border: 2px solid rgba(255,255,255,0.4);
+      border-radius: 4px;
+    }
+    #title-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(to bottom, #1a0a00, #3a2a10, #2a4a1a);
+      z-index: 100;
+    }
+    #title-screen h1 {
+      color: #ffd700;
+      font-size: 64px;
+      text-shadow: 3px 3px 6px #000, 0 0 20px #ff8800;
+      letter-spacing: 8px;
+      margin-bottom: 20px;
+    }
+    #title-screen .subtitle {
+      color: #cca;
+      font-size: 16px;
+      margin-bottom: 40px;
+    }
+    #title-screen .start-prompt {
+      color: #fff;
+      font-size: 20px;
+      animation: blink 1.2s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    #title-horse {
+      width: 200px;
+      height: 150px;
+      margin-bottom: 20px;
+    }
+    #game-over-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.85);
+      z-index: 100;
+    }
+    #game-over-screen h1 {
+      color: #e44;
+      font-size: 48px;
+      text-shadow: 2px 2px 4px #000;
+      margin-bottom: 20px;
+    }
+    #game-over-stats {
+      color: #ccc;
+      font-size: 16px;
+      line-height: 1.8;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    #game-over-screen .restart-prompt {
+      color: #fff;
+      font-size: 18px;
+      animation: blink 1.2s infinite;
+    }
+    #controls-help {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      color: rgba(255,255,255,0.5);
+      font-size: 10px;
+      line-height: 1.5;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+  <div id="ui-overlay">
+    <div id="title-screen">
+      <canvas id="title-horse"></canvas>
+      <h1>HORSE SIMULATOR</h1>
+      <div class="subtitle">A Majestic Adventure in Equine Excellence</div>
+      <div class="start-prompt">[ PRESS ENTER TO BEGIN ]</div>
+    </div>
+    <div id="game-over-screen">
+      <h1>YOUR HORSE HAS FALLEN</h1>
+      <div id="game-over-stats"></div>
+      <div class="restart-prompt">[ PRESS ENTER TO RIDE AGAIN ]</div>
+    </div>
+    <div id="hud">
+      <div class="stat-bar">
+        <span class="stat-label">HEALTH</span>
+        <div class="stat-track"><div id="health-fill" class="stat-fill" style="width:100%"></div></div>
+      </div>
+      <div class="stat-bar">
+        <span class="stat-label">HUNGER</span>
+        <div class="stat-track"><div id="hunger-fill" class="stat-fill" style="width:100%"></div></div>
+      </div>
+      <div class="stat-bar">
+        <span class="stat-label">THIRST</span>
+        <div class="stat-track"><div id="thirst-fill" class="stat-fill" style="width:100%"></div></div>
+      </div>
+      <div class="stat-bar">
+        <span class="stat-label">STAMINA</span>
+        <div class="stat-track"><div id="stamina-fill" class="stat-fill" style="width:100%"></div></div>
+      </div>
+      <div id="age-label">AGE: Foal</div>
+    </div>
+    <div id="minimap-container">
+      <canvas id="minimap" width="150" height="150"></canvas>
+    </div>
+    <div id="controls-help">
+      WASD - Move | SHIFT - Sprint | SPACE - Rear/Kick<br>
+      Mouse - Look | Click - Lock cursor
+    </div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
