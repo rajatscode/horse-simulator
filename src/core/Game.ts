@@ -17,6 +17,7 @@ import { CombatSystem } from '../systems/CombatSystem';
 import { GrazingSystem } from '../systems/GrazingSystem';
 import { AgingSystem } from '../systems/AgingSystem';
 import { ParticleSystem } from '../systems/ParticleSystem';
+import { GameMode } from '../systems/GameMode';
 import { HUD } from '../ui/HUD';
 import { TitleScreen } from '../ui/TitleScreen';
 import { GameOver } from '../ui/GameOver';
@@ -64,6 +65,7 @@ export class Game {
 
   // Game state
   state: 'title' | 'playing' | 'gameover' = 'title';
+  gameMode: GameMode = 'survival';
   totalTime = 0;
   distanceTraveled = 0;
   fightsWon = 0;
@@ -204,6 +206,7 @@ export class Game {
 
   startGame(): void {
     this.state = 'playing';
+    this.gameMode = this.titleScreen.selectedMode;
     this.titleScreen.hide();
     this.hud.show();
     this.totalTime = 0;
@@ -222,6 +225,19 @@ export class Game {
     this.horsePhysics.ragdollMode = false;
     this.horsePhysics.ragdollTimer = 0;
     this.lastHorsePos.set(spawnX, spawnY, spawnZ);
+
+    // Apply mode-specific logic
+    if (this.gameMode === 'laststand') {
+      // Spawn extra predator for Last Stand mode
+      if (this.predators.length < 2) {
+        const x = 30 + Math.random() * 40;
+        const z = 30 + Math.random() * 40;
+        const y = this.terrain.getHeightAt(x, z);
+        const pred = new Predator(this.scene, this.physicsSystem, x, y, z);
+        pred.setAudio(this.audio);
+        this.predators.push(pred);
+      }
+    }
 
     this.audio.startAmbientWind();
   }
@@ -293,6 +309,11 @@ export class Game {
     // Stats
     this.horseStats.update(dt, this.horseController.speed > 0, this.horseController.speed > 15);
 
+    // Stamina warning sound when low
+    if (this.horseStats.stamina < 20) {
+      this.audio.playStaminaWarning();
+    }
+
     // Systems
     const horsePos3 = new THREE.Vector3(pos.x, pos.y, pos.z);
     this.grazingSystem.update(dt, horsePos3, this.horseStats, this.horseController.speed);
@@ -311,8 +332,9 @@ export class Game {
     }
 
     // Mares
+    const predatorPositions = this.predators.map(p => new THREE.Vector3(p.body.position.x, p.body.position.y, p.body.position.z));
     for (const mare of this.mares) {
-      mare.update(dt, horsePos3, this.terrain);
+      mare.update(dt, horsePos3, this.terrain, predatorPositions);
     }
 
     // Predators

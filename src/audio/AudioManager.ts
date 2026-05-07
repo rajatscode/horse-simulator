@@ -4,6 +4,7 @@ export class AudioManager {
   private windNode: OscillatorNode | null = null;
   private windGain: GainNode | null = null;
   private initialized = false;
+  private lastStaminaWarningTime = 0;
 
   private ensureContext(): AudioContext {
     if (!this.ctx) {
@@ -326,6 +327,39 @@ export class AudioManager {
 
       source.start(now);
       source.stop(now + 0.3);
+    } catch (e) {
+      // Audio not available
+    }
+  }
+
+  playStaminaWarning(): void {
+    try {
+      const ctx = this.ensureContext();
+      const now = ctx.currentTime;
+
+      // Cooldown: only play once per second
+      if (now - this.lastStaminaWarningTime < 1.0) {
+        return;
+      }
+      this.lastStaminaWarningTime = now;
+
+      // Stamina warning: ascending beep tone
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.linearRampToValueAtTime(600, now + 0.3);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.1, now + 0.05);
+      gain.gain.setValueAtTime(0.1, now + 0.2);
+      gain.gain.linearRampToValueAtTime(0, now + 0.3);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain!);
+
+      osc.start(now);
+      osc.stop(now + 0.3);
     } catch (e) {
       // Audio not available
     }

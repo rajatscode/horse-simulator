@@ -1,8 +1,90 @@
+import { GameMode } from '../systems/GameMode';
+
 export class TitleScreen {
   private el: HTMLElement;
+  selectedMode: GameMode = 'survival';
+  private modeContainer: HTMLElement | null = null;
 
   constructor() {
     this.el = document.getElementById('title-screen')!;
+    this.setupModeSelector();
+  }
+
+  private setupModeSelector(): void {
+    // Create mode selector HTML if not already present
+    const existingContainer = this.el.querySelector('#mode-selector');
+    if (existingContainer) {
+      this.modeContainer = existingContainer as HTMLElement;
+      return;
+    }
+
+    this.modeContainer = document.createElement('div');
+    this.modeContainer.id = 'mode-selector';
+    this.modeContainer.style.cssText = `
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+      justify-content: center;
+    `;
+
+    const survivalBtn = document.createElement('button');
+    survivalBtn.textContent = 'SURVIVAL MODE';
+    survivalBtn.style.cssText = `
+      padding: 10px 20px;
+      background: #444;
+      color: #fff;
+      border: 2px solid #fff;
+      font-family: 'Courier New', monospace;
+      cursor: pointer;
+      font-size: 14px;
+      border-radius: 4px;
+    `;
+    survivalBtn.onclick = () => {
+      this.selectedMode = 'survival';
+      this.updateModeButtons();
+    };
+
+    const laststandBtn = document.createElement('button');
+    laststandBtn.textContent = 'LAST STAND MODE';
+    laststandBtn.style.cssText = `
+      padding: 10px 20px;
+      background: #444;
+      color: #fff;
+      border: 2px solid #888;
+      font-family: 'Courier New', monospace;
+      cursor: pointer;
+      font-size: 14px;
+      border-radius: 4px;
+    `;
+    laststandBtn.onclick = () => {
+      this.selectedMode = 'laststand';
+      this.updateModeButtons();
+    };
+
+    this.modeContainer.appendChild(survivalBtn);
+    this.modeContainer.appendChild(laststandBtn);
+
+    // Insert before the horse canvas
+    const horseCanvas = this.el.querySelector('#title-horse');
+    if (horseCanvas) {
+      horseCanvas.parentElement?.insertBefore(this.modeContainer, horseCanvas);
+    } else {
+      this.el.insertBefore(this.modeContainer, this.el.firstChild);
+    }
+
+    this.updateModeButtons();
+  }
+
+  private updateModeButtons(): void {
+    const buttons = this.modeContainer?.querySelectorAll('button');
+    if (buttons) {
+      buttons.forEach((btn, idx) => {
+        const isSelected = (idx === 0 && this.selectedMode === 'survival') ||
+                          (idx === 1 && this.selectedMode === 'laststand');
+        btn.style.borderColor = isSelected ? '#fff' : '#888';
+        btn.style.background = isSelected ? '#555' : '#444';
+      });
+    }
   }
 
   hide(): void {

@@ -12,6 +12,7 @@ export class HUD {
   private minimapCanvas: HTMLCanvasElement;
   private minimapCtx: CanvasRenderingContext2D;
   private controlsEl: HTMLElement;
+  private staminaVignette: HTMLElement;
 
   private healthFill: HTMLElement;
   private hungerFill: HTMLElement;
@@ -25,6 +26,7 @@ export class HUD {
     this.minimapCanvas = document.getElementById('minimap') as HTMLCanvasElement;
     this.minimapCtx = this.minimapCanvas.getContext('2d')!;
     this.controlsEl = document.getElementById('controls-help')!;
+    this.staminaVignette = document.getElementById('stamina-vignette')!;
 
     this.healthFill = document.getElementById('health-fill')!;
     this.hungerFill = document.getElementById('hunger-fill')!;
@@ -37,12 +39,14 @@ export class HUD {
     this.hudEl.style.display = 'block';
     this.minimapContainer.style.display = 'block';
     this.controlsEl.style.display = 'block';
+    this.staminaVignette.style.display = 'block';
   }
 
   hide(): void {
     this.hudEl.style.display = 'none';
     this.minimapContainer.style.display = 'none';
     this.controlsEl.style.display = 'none';
+    this.staminaVignette.style.display = 'none';
   }
 
   update(stats: HorseStats, aging: AgingSystem): void {
@@ -56,6 +60,14 @@ export class HUD {
     this.healthFill.style.background = stats.health < 30 ? '#ff2222' : '#e44';
     this.hungerFill.style.background = stats.hunger < 20 ? '#886600' : '#4a4';
     this.thirstFill.style.background = stats.thirst < 20 ? '#335588' : '#48f';
+
+    // Stamina vignette effect
+    if (stats.stamina < 25) {
+      const vignetteOpacity = (1 - stats.stamina / 25) * 0.4;
+      this.staminaVignette.style.opacity = String(vignetteOpacity);
+    } else {
+      this.staminaVignette.style.opacity = '0';
+    }
   }
 
   updateMinimap(

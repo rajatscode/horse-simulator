@@ -76,7 +76,7 @@ export class Mare {
     physicsSystem.world.addBody(this.body);
   }
 
-  update(dt: number, playerPos: THREE.Vector3, terrain: Terrain): void {
+  update(dt: number, playerPos: THREE.Vector3, terrain: Terrain, predatorPositions: THREE.Vector3[] = []): void {
     // Terrain following
     const terrainY = terrain.getHeightAt(this.body.position.x, this.body.position.z);
     if (this.body.position.y < terrainY + 0.6) {
@@ -88,6 +88,18 @@ export class Mare {
     const distToPlayer = myPos.distanceTo(playerPos);
 
     this.fleeTimer -= dt;
+
+    // Check for predators nearby
+    for (const predPos of predatorPositions) {
+      const distToPred = myPos.distanceTo(predPos);
+      if (distToPred < 40 && this.fleeTimer <= 0) {
+        // Flee from predator
+        const awayDir = myPos.clone().sub(predPos).normalize();
+        this.wanderAngle = Math.atan2(awayDir.x, awayDir.z);
+        this.fleeTimer = 3; // Flee longer than from player
+        break;
+      }
+    }
 
     if (distToPlayer < 8 && this.fleeTimer <= 0) {
       // Startled - move away from player briefly
