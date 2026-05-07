@@ -3,6 +3,7 @@ import * as CANNON from 'cannon-es';
 import { HorsePhysics } from '../horse/HorsePhysics';
 import { HorseStats } from '../horse/HorseStats';
 import { RivalStallion } from '../entities/RivalStallion';
+import { Predator } from '../entities/Predator';
 import { AudioManager } from '../audio/AudioManager';
 import { eventBus } from '../core/EventBus';
 
@@ -73,6 +74,43 @@ export class CombatSystem {
         rival.body.velocity.x -= pushDir.x * 5;
         rival.body.velocity.z -= pushDir.z * 5;
       }
+    }
+  }
+
+  checkPredatorCollision(
+    horsePhysics: HorsePhysics,
+    horseStats: HorseStats,
+    predator: Predator,
+    horseSpeed: number
+  ): void {
+    this.combatCooldown -= 1 / 60;
+    if (this.combatCooldown > 0) return;
+
+    if (horsePhysics.ragdollMode || predator.state === 'ragdoll') return;
+
+    const hx = horsePhysics.body.position.x;
+    const hy = horsePhysics.body.position.y;
+    const hz = horsePhysics.body.position.z;
+    const px = predator.body.position.x;
+    const py = predator.body.position.y;
+    const pz = predator.body.position.z;
+
+    const dist = Math.sqrt((hx - px) ** 2 + (hy - py) ** 2 + (hz - pz) ** 2);
+
+    // Predator attacks when very close (only in chase state)
+    if (predator.state === 'chase' && dist < 2.5) {
+      this.combatCooldown = 2;
+
+      const impactDir = new THREE.Vector3(hx - px, 0, hz - pz).normalize();
+
+      // Predator damages horse
+      horseStats.takeDamage(25);
+      horsePhysics.enterRagdoll(
+        new CANNON.Vec3(impactDir.x * 8, 3, impactDir.z * 8)
+      );
+
+      this.audio.playImpactBonk();
+      this.audio.playNeigh();
     }
   }
 }

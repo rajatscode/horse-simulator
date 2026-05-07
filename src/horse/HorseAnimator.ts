@@ -22,6 +22,19 @@ export class HorseAnimator {
     this.rearProgress = 0;
   }
 
+  isGrazing = false;
+  private grazeProgress = 0;
+
+  startGraze(): void {
+    this.isGrazing = true;
+    this.grazeProgress = 0;
+  }
+
+  stopGraze(): void {
+    this.isGrazing = false;
+    this.grazeProgress = 0;
+  }
+
   update(dt: number, speed: number, ragdoll: boolean): void {
     if (ragdoll) {
       this.updateRagdoll(dt);
@@ -29,6 +42,24 @@ export class HorseAnimator {
     }
 
     const h = this.horse;
+
+    // Grazing animation (overrides normal animations)
+    if (this.isGrazing) {
+      this.grazeProgress = Math.min(this.grazeProgress + dt * 2, 1);
+      const grazeAmount = Math.min(this.grazeProgress, 1);
+      h.head.position.y = 4.8 - grazeAmount * 1.5; // Lower head
+      h.snout.position.y = 4.5 - grazeAmount * 1.5;
+      h.neck.rotation.x = -0.4 - grazeAmount * 0.8; // Bend neck down
+      h.earL.rotation.z = -0.1 - grazeAmount * 0.2; // Relax ears
+      h.earR.rotation.z = 0.1 + grazeAmount * 0.2;
+      this.legPhase += dt * 0.2; // Minimal leg movement
+      // Slight body sway while grazing
+      h.body.rotation.z = Math.sin(this.grazeProgress * Math.PI * 2) * 0.05;
+      return;
+    } else if (this.grazeProgress > 0) {
+      // Transition out of grazing
+      this.grazeProgress = 0;
+    }
 
     // Leg animation based on speed
     const legSpeed = speed * 0.8;

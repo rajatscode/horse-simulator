@@ -2,15 +2,21 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { PhysicsSystem } from '../systems/PhysicsSystem';
 import { Terrain } from '../world/Terrain';
+import { AudioManager } from '../audio/AudioManager';
 
-type WolfState = 'wander' | 'stalk' | 'chase';
+type WolfState = 'wander' | 'stalk' | 'chase' | 'ragdoll';
 
 export class Predator {
   group: THREE.Group;
   body: CANNON.Body;
-  private state: WolfState = 'wander';
+  state: WolfState = 'wander'; // Made public for combat system
+  health = 60;
+  ragdollTimer = 0;
   private wanderAngle: number;
   private wanderTimer = 0;
+  private lastState: WolfState = 'wander';
+  private audio: AudioManager | null = null;
+  private audioTimer = 0;
   private legPhase = 0;
   private legs: THREE.Mesh[] = [];
   private head: THREE.Mesh;
@@ -97,6 +103,10 @@ export class Predator {
     physicsSystem.world.addBody(this.body);
   }
 
+  setAudio(audio: AudioManager): void {
+    this.audio = audio;
+  }
+
   update(dt: number, playerPos: THREE.Vector3, terrain: Terrain): void {
     // Terrain following
     const terrainY = terrain.getHeightAt(this.body.position.x, this.body.position.z);
@@ -107,6 +117,9 @@ export class Predator {
 
     const myPos = new THREE.Vector3(this.body.position.x, this.body.position.y, this.body.position.z);
     const distToPlayer = myPos.distanceTo(playerPos);
+
+    // Audio feedback
+    this.audioTimer -= dt;
 
     switch (this.state) {
       case 'wander':
@@ -154,6 +167,22 @@ export class Predator {
     this.body.velocity.x = Math.sin(this.wanderAngle) * this.speed;
     this.body.velocity.z = Math.cos(this.wanderAngle) * this.speed;
 
+    // Audio threat cues
+    if (this.state !== this.lastState) {
+      if (this.state === 'stalk' && this.audio && this.audioTimer <= 0) {
+        this.audio.playPredatorGrowl();
+        this.audioTimer = 2;
+      } else if (this.state === 'chase' && this.audio && this.audioTimer <= 0) {
+        this.audio.playPredatorSnarl();
+        this.audioTimer = 1;
+      }
+      this.lastState = this.state;
+    } else if (this.state === 'chase' && this.audio && this.audioTimer <= 0) {
+      // Repeat threat sounds while chasing
+      this.audio.playPredatorSnarl();
+      this.audioTimer = 2;
+    }
+
     // Stay in bounds
     if (Math.abs(this.body.position.x) > 220 || Math.abs(this.body.position.z) > 220) {
       this.wanderAngle = Math.atan2(-this.body.position.x, -this.body.position.z);
@@ -179,6 +208,39 @@ export class Predator {
 
     // Sync mesh
     this.group.position.set(this.body.position.x, this.body.position.y, this.body.position.z);
-    this.group.rotation.y = this.wanderAngle;
+    if (this.state !== 'ragdoll') {
+      this.group.rotation.y = this.wanderAngle;
+    }
+
+    // Handle ragdoll timer
+    if (this.state === 'ragdoll') {
+      this.ragdollTimer -= dt;
+      if (this.ragdollTimer <= 0) {
+        this.state = 'wander';
+        this.body.fixedRotation = true;
+        this.body.angularVelocity.set(0, 0, 0);
+      }
+    }
+  }
+
+  takeDamage(amount: number): void {
+    this.health -= amount;
+    if (this.health < 0) this.health = 0;
+  }
+
+  enterRagdoll(impactVelocity: CANNON.Vec3): void {
+    this.state = 'ragdoll';
+    this.ragdollTimer = 2;
+    this.body.fixedRotation = false;
+    this.body.velocity.set(
+      impactVelocity.x * 0.3,
+      4 + Math.random() * 2,
+      impactVelocity.z * 0.3
+    );
+    this.body.angularVelocity.set(
+      (Math.random() - 0.5) * 4,
+      (Math.random() - 0.5) * 3,
+      (Math.random() - 0.5) * 4
+    );
   }
 }

@@ -226,4 +226,108 @@ export class AudioManager {
       // Ignore
     }
   }
+
+  playMunching(): void {
+    try {
+      const ctx = this.ensureContext();
+      const now = ctx.currentTime;
+
+      // Munching: short, softer clicks
+      const bufferSize = ctx.sampleRate * 0.05;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+
+      for (let i = 0; i < bufferSize; i++) {
+        const t = i / bufferSize;
+        const envelope = Math.exp(-t * 20);
+        data[i] = (Math.random() * 2 - 1) * envelope * 0.3;
+      }
+
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.value = 500;
+
+      const gain = ctx.createGain();
+      gain.gain.value = 0.08 + Math.random() * 0.04;
+
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.masterGain!);
+
+      source.start(now);
+      source.stop(now + 0.05);
+    } catch (e) {
+      // Audio not available
+    }
+  }
+
+  playPredatorGrowl(): void {
+    try {
+      const ctx = this.ensureContext();
+      const now = ctx.currentTime;
+
+      // Low growl: start around 80Hz and modulate
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(80, now);
+      osc.frequency.linearRampToValueAtTime(120, now + 0.4);
+      osc.frequency.linearRampToValueAtTime(80, now + 0.8);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.08, now + 0.1);
+      gain.gain.setValueAtTime(0.08, now + 0.6);
+      gain.gain.linearRampToValueAtTime(0, now + 0.8);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain!);
+
+      osc.start(now);
+      osc.stop(now + 0.8);
+    } catch (e) {
+      // Audio not available
+    }
+  }
+
+  playPredatorSnarl(): void {
+    try {
+      const ctx = this.ensureContext();
+      const now = ctx.currentTime;
+
+      // Snarl: higher frequency growl with noise
+      const bufferSize = ctx.sampleRate * 0.3;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+
+      for (let i = 0; i < bufferSize; i++) {
+        const t = i / bufferSize;
+        const envelope = Math.exp(-t * 5);
+        const noise = (Math.random() * 2 - 1) * 0.5;
+        const tone = Math.sin(i * 0.08) * 0.5;
+        data[i] = (noise + tone) * envelope;
+      }
+
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.value = 800;
+
+      const gain = ctx.createGain();
+      gain.gain.value = 0.12;
+
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.masterGain!);
+
+      source.start(now);
+      source.stop(now + 0.3);
+    } catch (e) {
+      // Audio not available
+    }
+  }
 }

@@ -59,6 +59,7 @@ export class Game {
   cameraYaw = 0;
   cameraPitch = 0.3;
   cameraDistance = 12;
+  cameraMouseOffset = 0; // Mouse offset from horse direction
   screenShake = 0;
 
   // Game state
@@ -125,6 +126,8 @@ export class Game {
     // Systems
     this.combatSystem = new CombatSystem(this.audio);
     this.grazingSystem = new GrazingSystem(this.terrain);
+    this.grazingSystem.setAnimator(this.horseAnimator);
+    this.grazingSystem.setAudio(this.audio);
     this.agingSystem = new AgingSystem();
     this.particleSystem = new ParticleSystem(this.scene);
 
@@ -185,6 +188,7 @@ export class Game {
       const z = 60 + Math.random() * 40;
       const y = this.terrain.getHeightAt(x, z);
       const pred = new Predator(this.scene, this.physicsSystem, x, y, z);
+      pred.setAudio(this.audio);
       this.predators.push(pred);
     }
 
@@ -314,6 +318,12 @@ export class Game {
     // Predators
     for (const pred of this.predators) {
       pred.update(dt, horsePos3, this.terrain);
+      this.combatSystem.checkPredatorCollision(
+        this.horsePhysics,
+        this.horseStats,
+        pred,
+        this.horseController.speed
+      );
     }
 
     // Rabbits
@@ -356,10 +366,16 @@ export class Game {
   updateCamera(dt: number): void {
     const mouse = this.input.consumeMouseDelta();
     if (this.input.pointerLocked) {
-      this.cameraYaw -= mouse.dx * 0.003;
+      this.cameraMouseOffset -= mouse.dx * 0.003;
       this.cameraPitch -= mouse.dy * 0.003;
       this.cameraPitch = Math.max(-0.5, Math.min(1.2, this.cameraPitch));
     }
+
+    // Clamp mouse offset so camera can't go completely around
+    this.cameraMouseOffset = Math.max(-1.5, Math.min(1.5, this.cameraMouseOffset));
+
+    // Bind camera yaw to horse facing direction with mouse offset
+    this.cameraYaw = this.horseController.facing + this.cameraMouseOffset;
 
     const horsePos = this.horse.group.position;
     const targetX = horsePos.x - Math.sin(this.cameraYaw) * Math.cos(this.cameraPitch) * this.cameraDistance;
